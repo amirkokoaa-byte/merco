@@ -312,6 +312,7 @@
                                         <option value="">-- اختر --</option>
                                     </select>
                                     <button class="btn btn-add" onclick="addNewMarketPrompt()">+</button>
+                                    <button class="btn btn-del hidden" id="btn-del-market" onclick="deleteSelectedMarket()" style="margin-right:5px; font-weight:bold;">🗑️</button>
                                 </div>
                             </div>
                             <div>
@@ -446,6 +447,7 @@
         let allCompetitorData = [];
         let allInventoryHistory = [];
         let marketList = [];
+        let allMarketsData = []; // Store market objects {key, name}
         let globalSettings = { whatsapp: "201000000000", tickerText: "", tickerEnabled: true, globalView: false };
         let customInventoryItems = [];
 
@@ -536,11 +538,15 @@
                 document.getElementById('admin-panel').classList.remove('hidden');
                 document.getElementById('admin-controls-sales').classList.remove('hidden');
                 document.getElementById('user-panel').classList.add('hidden');
+                // Show Delete Market Button
+                document.getElementById('btn-del-market').classList.remove('hidden');
                 loadUsers();
             } else {
                 document.getElementById('admin-panel').classList.add('hidden');
                 document.getElementById('admin-controls-sales').classList.add('hidden');
                 document.getElementById('user-panel').classList.remove('hidden');
+                // Hide Delete Market Button
+                document.getElementById('btn-del-market').classList.add('hidden');
             }
         }
 
@@ -567,17 +573,17 @@
                 // Calculate Stats
                 let dMax = {u:'-', v:0}, mMax = {u:'-', v:0};
                 if(allSales.length > 0) {
-                     let uDaily={}, uMonthly={};
-                     allSales.forEach(s => {
-                         let d = new Date(s.timestamp).toLocaleDateString();
-                         let m = s.date.slice(0,7);
-                         let kD = `${d}_${s.user}`;
-                         let kM = `${m}_${s.user}`;
-                         uDaily[kD] = (uDaily[kD]||0)+s.total;
-                         uMonthly[kM] = (uMonthly[kM]||0)+s.total;
-                     });
-                     Object.entries(uDaily).forEach(([k,v])=>{ if(v>dMax.v){dMax.v=v; dMax.u=k.split('_')[1];} });
-                     Object.entries(uMonthly).forEach(([k,v])=>{ if(v>mMax.v){mMax.v=v; mMax.u=k.split('_')[1];} });
+                      let uDaily={}, uMonthly={};
+                      allSales.forEach(s => {
+                          let d = new Date(s.timestamp).toLocaleDateString();
+                          let m = s.date.slice(0,7);
+                          let kD = `${d}_${s.user}`;
+                          let kM = `${m}_${s.user}`;
+                          uDaily[kD] = (uDaily[kD]||0)+s.total;
+                          uMonthly[kM] = (uMonthly[kM]||0)+s.total;
+                      });
+                      Object.entries(uDaily).forEach(([k,v])=>{ if(v>dMax.v){dMax.v=v; dMax.u=k.split('_')[1];} });
+                      Object.entries(uMonthly).forEach(([k,v])=>{ if(v>mMax.v){mMax.v=v; mMax.u=k.split('_')[1];} });
                 }
                 content.innerHTML = `🌟 أعلى مبيعات يومية: ${dMax.u} (${dMax.v} ج.م) &nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp; 🏆 أعلى شهر: ${mMax.u} (${mMax.v} ج.م)`;
             }
@@ -769,7 +775,7 @@
                 const data = snap.val();
                 allCompetitorData = [];
                 if(data) Object.entries(data).forEach(([k,v]) => allCompetitorData.push({key:k, ...v}));
-                renderSavedCompetitors(); // FIX: Added auto-refresh here
+                renderSavedCompetitors(); 
             });
         }
 
@@ -786,12 +792,12 @@
                 const date = new Date(rec.timestamp).toLocaleString('ar-EG');
                 let rows = rec.items.map(i => `<tr><td>${i.name}</td><td>${i.price}</td></tr>`).join('');
                 
-                let actions = '';
+                // زر التعديل متاح للجميع الآن
+                let actions = `<button class="btn btn-edit" onclick="editCompetitorReport('${rec.key}')">تعديل</button>`;
+                
+                // زر الحذف فقط للادمن
                 if(currentUser.role === 'admin') {
-                     actions = `
-                        <button class="btn btn-edit" onclick="editCompetitorReport('${rec.key}')">تعديل</button>
-                        <button class="btn btn-del" onclick="deleteCompetitorReport('${rec.key}')">حذف</button>
-                     `;
+                      actions += `<button class="btn btn-del" onclick="deleteCompetitorReport('${rec.key}')">حذف</button>`;
                 }
 
                 div.innerHTML += `
@@ -815,6 +821,7 @@
         window.editCompetitorReport = function(key) {
             const rec = allCompetitorData.find(c => c.key === key);
             if(!rec) return;
+            // السماح بالتعديل للجميع
             if(confirm("سيتم نقل البيانات للخانات للتعديل وحذف السجل الحالي..")) {
                 document.getElementById('comp-market').value = rec.market;
                 document.getElementById('comp-company').value = rec.company;
@@ -979,13 +986,43 @@
         };
 
         // --- Common ---
-        window.loadMarkets = function() { onValue(ref(db,'markets'), s=>{ marketList=[]; if(s.val()) Object.values(s.val()).forEach(m=>marketList.push(m.name)); updateDropdowns(); }); };
+        window.loadMarkets = function() { 
+            onValue(ref(db,'markets'), s=>{ 
+                marketList=[]; 
+                allMarketsData = []; // Clear current global data
+                if(s.val()) {
+                    Object.entries(s.val()).forEach(([k,v]) => {
+                        marketList.push(v.name);
+                        allMarketsData.push({key:k, name:v.name}); // Store key and name
+                    });
+                }
+                updateDropdowns(); 
+            }); 
+        };
+        
         function updateDropdowns() { 
             const fill = (id) => { const el=document.getElementById(id); const v=el.value; el.innerHTML='<option value="">-- اختر --</option>'; marketList.sort().forEach(m=>el.add(new Option(m,m))); el.value=v; };
             fill('sales-branch-select'); fill('inv-branch-select'); fill('inv-history-filter'); fill('comp-market'); fill('saved-comp-filter');
         }
         
         window.addNewMarketPrompt = function() { const n = prompt("الاسم:"); if(n && !marketList.includes(n)) push(ref(db, 'markets'), {name:n}); };
+
+        // NEW: Function to delete market (Admin Only)
+        window.deleteSelectedMarket = function() {
+            if(currentUser.role !== 'admin') return alert("هذه الخاصية للأدمن فقط");
+            const name = document.getElementById('comp-market').value;
+            if(!name) return alert("يرجى اختيار ماركت للحذف");
+            
+            const marketObj = allMarketsData.find(m => m.name === name);
+            if(marketObj && confirm("هل أنت متأكد من حذف هذا الماركت نهائياً؟")) {
+                remove(ref(db, `markets/${marketObj.key}`))
+                    .then(() => {
+                        alert("تم حذف الماركت");
+                        document.getElementById('comp-market').value = ""; // Reset select
+                    })
+                    .catch(err => alert("حدث خطأ: " + err));
+            }
+        };
         
         window.addDailyRow = function() { const tr = document.createElement('tr'); tr.innerHTML=`<td><input type="text" class="ds-item" list="prod-list"></td><td><input type="number" class="ds-qty"></td><td><input type="number" class="ds-price" onchange="calcTotal()"></td><td><button class="btn btn-del" onclick="this.closest('tr').remove();calcTotal()">X</button></td>`; document.getElementById('daily-sales-body').appendChild(tr); };
         const dl = document.createElement('datalist'); dl.id="prod-list"; softRoseProducts.forEach(p=>{const o=document.createElement('option');o.value=p;dl.appendChild(o)}); document.body.appendChild(dl);
