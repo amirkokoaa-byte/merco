@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Trade Soft Rose - System</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #e74c3c;
+            --bg-color: #f4f6f9;
+            --text-color: #333;
+            --panel-bg: #fff;
+            --sidebar-width: 260px;
+            --border-radius: 8px;
+            --ticker-bg: #c0392b;
+        }
+
+        /* Themes */
+        body.dark-mode {
+            --primary-color: #1a1a1a;
+            --secondary-color: #c0392b;
+            --bg-color: #121212;
+            --text-color: #ecf0f1;
+            --panel-bg: #1e1e1e;
+        }
+        body.glass-mode {
+            --primary-color: rgba(44, 62, 80, 0.9);
+            --bg-color: #859398; 
+            --panel-bg: rgba(255, 255, 255, 0.85);
+            --text-color: #000; 
+            backdrop-filter: blur(5px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body {
+            background: var(--bg-color); color: var(--text-color);
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden; transition: 0.3s;
+        }
+
+        /* Ticker Tape */
+        .ticker-wrap {
+            position: fixed; top: 0; width: 100%; height: 35px; background: var(--ticker-bg); 
+            z-index: 9999; overflow: hidden; display: none; /* Hidden by default until loaded */
+            line-height: 35px; color: #fff; font-weight: bold; font-size: 1rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .ticker-move {
+            display: inline-block; white-space: nowrap; padding-right: 100%;
+            animation: ticker 25s linear infinite;
+        }
+        @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(100%, 0, 0); } }
+
+        /* Login Screen */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--primary-color); display: flex; z-index: 10000;
+            justify-content: center; align-items: center;
+        }
+        .login-box {
+            background: #fff; padding: 40px; border-radius: 10px; width: 350px; text-align: center;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+        }
+        .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
+        .login-box button { width: 100%; padding: 12px; background: #e74c3c; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+        /* App Layout */
+        #app-container { display: flex; flex: 1; height: calc(100% - 35px); margin-top: 35px; width: 100%; }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width); background: var(--primary-color); color: #fff;
+            display: flex; flex-direction: column; padding: 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto; flex-shrink: 0; z-index: 100;
+        }
+        .sidebar h2 { margin-bottom: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
+        .nav-btn {
+            background: transparent; border: none; color: #fff; text-align: right;
+            padding: 12px 15px; margin-bottom: 5px; cursor: pointer; border-radius: 5px;
+            font-size: 1rem; transition: 0.2s; white-space: nowrap; display: block; width: 100%;
+        }
+        .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,0.15); border-right: 4px solid var(--secondary-color); }
+        .whatsapp-btn { background: #25D366 !important; color: #fff !important; text-align: center; margin-top: auto; }
+
+        /* Main Content */
+        .main-content { 
+            flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;
+        }
+        
+        header {
+            background: var(--panel-bg); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); color: var(--text-color); flex-shrink: 0; flex-wrap: wrap; gap: 10px;
+        }
+
+        #content-area { flex: 1; padding: 20px; overflow-y: auto; position: relative; }
+        
+        .section { display: none; animation: fadeIn 0.4s; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* UI Elements */
+        .card {
+            background: var(--panel-bg); padding: 20px; border-radius: var(--border-radius);
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05); margin-bottom: 20px;
+        }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: rgba(255,255,255,0.05); }
+        th, td { padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); text-align: right; }
+        th { background: rgba(0,0,0,0.05); font-weight: bold; }
+        
+        input, select {
+            padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 100%;
+            background: rgba(255,255,255,0.9); color: #333; margin-bottom: 5px;
+        }
+        
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; color: #fff; background: var(--secondary-color); display: inline-block; text-align: center; font-size: 0.9rem; margin-bottom: 5px;}
+        .btn:hover { opacity: 0.9; }
+        .btn-add { background: #27ae60; }
+        .btn-del { background: #c0392b; padding: 5px 10px; font-size: 0.8rem; }
+        .btn-edit { background: #f39c12; padding: 5px 10px; font-size: 0.8rem; margin-left: 5px; }
+        .btn-view { background: #3498db; padding: 5px 10px; font-size: 0.8rem; margin-left: 5px; }
+        .btn-print { background: #8e44ad; }
+        .btn-rate { background: transparent; color: #f1c40f; font-size: 1.2rem; padding: 0 5px; cursor: pointer; }
+        
+        .hidden { display: none !important; }
+        .input-group { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .input-group select { flex: 1; margin: 0; }
+        
+        /* Modals */
+        .modal {
+            display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background-color: var(--panel-bg); padding: 20px; border-radius: 8px; width: 95%; max-width: 600px;
+            max-height: 90vh; overflow-y: auto; color: var(--text-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body { height: 100vh; }
+            #app-container { flex-direction: column; height: calc(100% - 35px); }
+            .sidebar {
+                width: 100%; height: auto; max-height: 160px; flex-direction: row; overflow-x: auto;
+                padding: 10px; white-space: nowrap; align-items: center; order: -1;
+            }
+            .sidebar h2 { display: none; }
+            .nav-btn { margin: 0 5px; border-right: none !important; border-bottom: 3px solid transparent; width: auto; display: inline-block; }
+            .nav-btn.active { background: rgba(255,255,255,0.2); border-bottom: 3px solid var(--secondary-color); }
+            .whatsapp-btn { margin-top: 0; margin-right: 10px; }
+            th, td { padding: 8px; font-size: 0.8rem; }
+        }
+        
+        footer { text-align: center; padding: 15px; font-size: 0.9rem; opacity: 0.7; border-top: 1px solid rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+    <div class="ticker-wrap" id="news-ticker">
+        <div class="ticker-move" id="ticker-content">
+            جاري تحميل البيانات...
+        </div>
+    </div>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h2 style="color:#333; margin-bottom:20px;">Soft Rose System</h2>
+            <input type="text" id="login-user" placeholder="اسم المستخدم">
+            <input type="password" id="login-pass" placeholder="كلمة المرور">
+            <button onclick="handleLogin()">دخول</button>
+            <p id="login-error" style="color:red; margin-top:10px; font-size:0.9rem;"></p>
+        </div>
+    </div>
+
+    <div id="app-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title" style="border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:10px;"></h3>
+            <div id="modal-body"></div>
+            <button class="btn" onclick="closeModal()" style="margin-top:15px; width:100%; background:#7f8c8d;">إغلاق</button>
+        </div>
+    </div>
+
+    <div id="app-container" class="hidden">
+        
+        <nav class="sidebar">
+            <h2>Modern Trade<br><small style="font-size:0.8rem; opacity:0.8;">Soft Rose System</small></h2>
+            <button class="nav-btn active" onclick="showSection('daily-sales')">📊 المبيعات اليومية</button>
+            <button class="nav-btn" onclick="showSection('prev-sales')">🗄️ سجل المبيعات</button>
+            <button class="nav-btn" onclick="showSection('inventory')">📦 تسجيل المخزون</button>
+            <button class="nav-btn" onclick="showSection('prev-inventory')">📜 سجل المخزون</button>
+            <button class="nav-btn" onclick="showSection('competitors')">🏷️ أسعار المنافسين</button>
+            <button class="nav-btn" onclick="showSection('competitors-saved')">📋 تقارير المنافسين</button>
+            <button class="nav-btn" onclick="showSection('settings')">⚙️ الإعدادات</button>
+            
+            <button class="nav-btn whatsapp-btn" onclick="openWhatsApp()">
+                <span style="font-size:1.2rem; vertical-align:middle;">📞</span> تواصل واتس آب
+            </button>
+            
+            <button class="nav-btn" style="background:#c0392b; margin-top:10px;" onclick="logout()">🔒 تسجيل خروج</button>
+        </nav>
+
+        <main class="main-content">
+            <header>
+                <div style="display:flex; align-items:center; gap:10px; font-weight:bold;">
+                    <span id="current-date-time" style="font-size:0.8rem;"></span>
+                    <span>| <span id="display-username" style="color:var(--secondary-color);"></span></span>
+                    <span style="background:#27ae60; color:#fff; padding:2px 8px; border-radius:10px; font-size:0.7rem;">On: <span id="online-count">0</span></span>
+                </div>
+                <div>
+                    <button class="btn" style="padding:5px 10px; background:#555; font-size:0.8rem;" onclick="setTheme('default')">Original</button>
+                    <button class="btn" style="padding:5px 10px; background:#3498db; font-size:0.8rem;" onclick="setTheme('glass')">Glass</button>
+                    <button class="btn" style="padding:5px 10px; background:#2c3e50; font-size:0.8rem;" onclick="setTheme('dark')">Dark</button>
+                </div>
+            </header>
+
+            <div id="content-area">
+                
+                <div id="daily-sales" class="section active">
+                    <div class="card">
+                        <h3>تسجيل مبيعات اليوم</h3>
+                        <div class="input-group">
+                            <select id="sales-branch-select">
+                                <option value="">-- اختر الماركت --</option>
+                            </select>
+                            <button class="btn btn-add" onclick="addNewMarketPrompt()">+ جديد</button>
+                        </div>
+                        
+                        <table id="daily-sales-table">
+                            <thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>حذف</th></tr></thead>
+                            <tbody id="daily-sales-body"></tbody>
+                        </table>
+                        <button class="btn btn-add" style="margin-top:10px;" onclick="addDailyRow()">+ منتج</button>
+                        
+                        <div style="margin-top:20px; font-size:1.3rem; font-weight:bold; padding-top:10px; border-top:2px solid #ddd;">
+                            الإجمالي: <span id="daily-total">0</span> جنية
+                        </div>
+                        <button class="btn" style="margin-top:20px; width:100%;" onclick="saveDailySales()">حفظ وترحيل</button>
+                    </div>
+                </div>
+
+                <div id="prev-sales" class="section">
+                    <div class="card">
+                        <h3>سجل المبيعات</h3>
+                        <div class="filter-bar" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+                            <input type="date" id="search-date" style="width:auto;">
+                            <button class="btn" onclick="searchSalesByDate()">بحث</button>
+                            <button class="btn btn-export" onclick="exportSimpleTable('prev-sales-table', 'المبيعات')">Excel</button>
+                        </div>
+                        
+                        <div id="admin-controls-sales" class="hidden" style="margin-bottom:10px; background:#f0f0f0; padding:10px; border-radius:5px;">
+                            <label><strong>تحكم المدير:</strong></label>
+                            <div style="display:flex; gap:10px; margin-top:5px;">
+                                <select id="admin-user-filter" onchange="filterSales()"><option value="all">عرض مبيعات الجميع</option></select>
+                            </div>
+                        </div>
+
+                        <div style="overflow-x:auto;">
+                            <table id="prev-sales-table">
+                                <thead><tr><th>التاريخ</th><th>المستخدم</th><th>الفرع</th><th>الإجمالي</th><th>خيارات</th></tr></thead>
+                                <tbody id="prev-sales-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="inventory" class="section">
+                    <div class="card">
+                        <h3>تسجيل المخزون</h3>
+                        <div class="input-group">
+                            <select id="inv-branch-select">
+                                <option value="">-- اختر الماركت --</option>
+                            </select>
+                            <button class="btn btn-add" onclick="addNewMarketPrompt()">+ جديد</button>
+                        </div>
+                        
+                        <button class="btn" style="width:100%; margin-bottom:15px;" onclick="saveInventory()">💾 حفظ المخزون</button>
+                        <button class="btn btn-add" onclick="addInventoryItemPrompt()">+ إضافة صنف</button>
+                        <table id="inventory-table">
+                            <thead><tr><th>المنتج</th><th>الكمية</th></tr></thead>
+                            <tbody id="inventory-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="prev-inventory" class="section">
+                    <div class="card">
+                        <h3>سجل المخزون السابق</h3>
+                        <div class="input-group">
+                            <select id="inv-history-filter" onchange="renderInventoryHistory()">
+                                <option value="">-- اختر الماركت --</option>
+                            </select>
+                        </div>
+                        
+                        <div id="inv-history-display">
+                            <p style="text-align:center; color:#777;">اختر ماركت...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="competitors" class="section">
+                    <div class="card">
+                        <h3>تسجيل أسعار المنافسين</h3>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+                            <div>
+                                <label>الماركت:</label>
+                                <div class="input-group">
+                                    <select id="comp-market" onchange="resetCompetitorForms()">
+                                        <option value="">-- اختر --</option>
+                                    </select>
+                                    <button class="btn btn-add" onclick="addNewMarketPrompt()">+</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label>الشركة:</label>
+                                <div class="input-group">
+                                    <select id="comp-company" onchange="resetCompetitorForms()">
+                                        <option>Fine</option><option>Zeina</option><option>Papia/Familia</option><option>White</option>
+                                    </select>
+                                    <button class="btn btn-add" onclick="addOption('comp-company')">+</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="comp-forms-container">
+                            <h4>مناديل سحب (Facial)</h4>
+                            <table class="comp-sub-table" id="comp-facial"></table>
+                            <button class="btn btn-add" onclick="addCompRow('comp-facial')">+ سطر</button>
+                            
+                            <h4 style="margin-top:20px;">مناديل مطبخ (Kitchen)</h4>
+                            <table class="comp-sub-table" id="comp-kitchen"></table>
+                            <button class="btn btn-add" onclick="addCompRow('comp-kitchen')">+ سطر</button>
+
+                            <h4 style="margin-top:20px;">تواليت (Toilet)</h4>
+                            <table class="comp-sub-table" id="comp-toilet"></table>
+                            <button class="btn btn-add" onclick="addCompRow('comp-toilet')">+ سطر</button>
+                        </div>
+
+                        <button class="btn" style="width:100%; margin-top:25px; background:#2980b9;" onclick="saveCompetitorPrices()">حفظ الأسعار</button>
+                    </div>
+                </div>
+
+                <div id="competitors-saved" class="section">
+                    <div class="card">
+                        <h3>تقارير المنافسين</h3>
+                        <div class="input-group">
+                            <select id="saved-comp-filter" onchange="renderSavedCompetitors()">
+                                <option value="">-- اختر لعرض التقارير --</option>
+                            </select>
+                            <button class="btn btn-print" onclick="printCompetitorReport()">🖨️ طباعة شاملة</button>
+                        </div>
+
+                        <div id="saved-comp-display" style="margin-top:20px;">
+                            <p style="text-align:center; color:#777;">اختر ماركت...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="settings" class="section">
+                    <div class="card">
+                        <h3>إعدادات النظام</h3>
+                        
+                        <div id="admin-panel" class="hidden">
+                            <div style="border:1px solid #ccc; padding:15px; border-radius:5px; margin-bottom:15px;">
+                                <h4>🔴 إعدادات الشريط المتحرك (Ticker)</h4>
+                                <label>النص المخصص (اتركه فارغاً لعرض الإحصائيات):</label>
+                                <input type="text" id="ticker-text-input" placeholder="مثال: اجتماع غداً الساعة 2">
+                                <div style="margin-top:10px;">
+                                    <label><input type="checkbox" id="ticker-toggle" style="width:auto;"> تفعيل الشريط</label>
+                                </div>
+                                <button class="btn" onclick="saveTickerSettings()">حفظ إعدادات الشريط</button>
+                            </div>
+
+                            <div style="border:1px solid #ccc; padding:15px; border-radius:5px; margin-bottom:15px;">
+                                <h4>📞 إعدادات رقم الواتس آب</h4>
+                                <input type="text" id="whatsapp-num-input" placeholder="مثال: 201000000000">
+                                <button class="btn" onclick="saveWhatsAppSettings()">تحديث الرقم</button>
+                            </div>
+
+                            <div style="border:1px solid #ccc; padding:15px; border-radius:5px; margin-bottom:15px;">
+                                <h4>👥 بيانات العاملين (HR)</h4>
+                                <button class="btn btn-view" onclick="openEmployeeModal()">إدارة الموظفين</button>
+                            </div>
+
+                            <div style="border:1px solid #ccc; padding:15px; border-radius:5px; margin-bottom:15px;">
+                                <h4>🔐 إدارة الحسابات والصلاحيات</h4>
+                                <div style="margin-bottom:10px;">
+                                    <label><input type="checkbox" id="global-sales-view" onchange="toggleGlobalView()" style="width:auto;"> السماح للموظفين برؤية مبيعات الجميع</label>
+                                </div>
+                                <hr>
+                                <h5>إضافة حساب جديد:</h5>
+                                <div class="input-group">
+                                    <input type="text" id="new-u" placeholder="اسم المستخدم (للدخول)">
+                                    <input type="text" id="new-p" placeholder="كلمة المرور">
+                                </div>
+                                <div class="input-group">
+                                    <input type="text" id="new-nick" placeholder="الاسم المستعار (يظهر في الموقع)">
+                                    <select id="new-role">
+                                        <option value="user">مستخدم (User)</option>
+                                        <option value="admin">مدير (Admin)</option>
+                                    </select>
+                                    <button class="btn btn-add" onclick="addNewUser()">إضافة</button>
+                                </div>
+                                <table id="users-table">
+                                    <thead><tr><th>المستخدم</th><th>الاسم</th><th>الدور</th><th>تقييم</th><th>تعديل</th></tr></thead>
+                                    <tbody id="users-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="user-panel">
+                            <p>مرحباً بك في نظام Soft Rose. الإصدار 3.0</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <footer>مع تحيات المطور <strong>Amir Lamay</strong></footer>
+        </main>
+    </div>
+
+    <script type="module">
+        // Using Stable Version 10.13.1
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, remove, update, onDisconnect } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAklmsuYWvws9GiMuKLRRG9NrW8wKgryeA",
+            authDomain: "happyhome-bc5e7.firebaseapp.com",
+            databaseURL: "https://happyhome-bc5e7-default-rtdb.firebaseio.com",
+            projectId: "happyhome-bc5e7",
+            storageBucket: "happyhome-bc5e7.firebasestorage.app",
+            messagingSenderId: "1057692254640",
+            appId: "1:1057692254640:web:529edffc6161fee4025675",
+            measurementId: "G-8SQ0EGSFN1"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Global State
+        let currentUser = null;
+        let onlineRef = null;
+        let allSales = [];
+        let allCompetitorData = [];
+        let allInventoryHistory = [];
+        let marketList = [];
+        let globalSettings = { whatsapp: "201000000000", tickerText: "", tickerEnabled: true, globalView: false };
+        let customInventoryItems = [];
+
+        const softRoseProducts = [
+            "Soft 500 singel", "Soft 600 singel", "Soft 400 3*1", "Soft 500 3*1 (3ply)",
+            "Soft 500 (3*1) classic", "Soft 500 (3*1) smart", "Soft 600 (3*1) 3ply",
+            "New mazika 220 (4*1)", "New Mazika 250 (5*1)", "Kitchen 2 Rolls", "Kitchen 4 Rolls", "Kitchen 6 Rolls",
+            "2 Rolls compress", "6 Rolls compress", "Mega Roll L", "Soft Rose XL", "Soft Rose XXL", "Soft 2 Hotels Jumbo",
+            "Soft 2 Hotels mauve", "Soft 2 Hotel Compress", "Soft 6 Hotels Jumbo", "Soft 6 Hotels mauve",
+            "Soft 6 Hotel Compress", "Dolphin 2 Toilet Rolls", "Dolphin 9 Toilet Rolls", "Dolphin 18 Toilet Rolls", "Dolphin 24 Toilet Rolls"
+        ];
+
+        // --- Initialization ---
+        window.onload = function() {
+            updateClock();
+            setInterval(updateClock, 1000);
+            renderInventoryTable();
+            resetCompetitorForms();
+            loadSettings();
+        };
+
+        function loadSettings() {
+            onValue(ref(db, 'settings'), snap => {
+                const s = snap.val();
+                if(s) globalSettings = { ...globalSettings, ...s };
+                updateTicker();
+                
+                // UI updates if admin
+                if(currentUser && currentUser.role === 'admin') {
+                    document.getElementById('whatsapp-num-input').value = globalSettings.whatsapp;
+                    document.getElementById('ticker-text-input').value = globalSettings.tickerText || "";
+                    document.getElementById('ticker-toggle').checked = globalSettings.tickerEnabled;
+                    document.getElementById('global-sales-view').checked = globalSettings.globalView;
+                }
+                
+                if(currentUser && currentUser.role !== 'admin') {
+                    renderSales(allSales);
+                }
+            });
+        }
+
+        // --- Login ---
+        window.handleLogin = function() {
+            const u = document.getElementById('login-user').value.trim();
+            const p = document.getElementById('login-pass').value.trim();
+            const err = document.getElementById('login-error');
+
+            onValue(ref(db, 'users'), (snap) => {
+                const users = snap.val();
+                let found = null;
+                if(users) {
+                    Object.entries(users).forEach(([k, v]) => {
+                        if(v.username === u && v.password === p) found = { key: k, ...v };
+                    });
+                }
+                
+                if(!found && u==='admin' && p==='admin') found = { username:'admin', role:'admin', nickname:'Admin' };
+
+                if(found) {
+                    loginSuccess(found);
+                } else {
+                    err.innerText = "خطأ في اسم المستخدم أو كلمة المرور";
+                }
+            }, {onlyOnce:true});
+        };
+
+        function loginSuccess(userObj) {
+            currentUser = userObj;
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('display-username').innerText = userObj.nickname || userObj.username;
+
+            // Presence
+            const presRef = ref(db, 'presence');
+            onlineRef = push(presRef);
+            set(onlineRef, { user: userObj.nickname || userObj.username, online: true });
+            onDisconnect(onlineRef).remove();
+            onValue(presRef, s => document.getElementById('online-count').innerText = s.size || 0);
+
+            // Load Data
+            loadMarkets();
+            loadSales();
+            loadInventoryData();
+            loadCompetitorData();
+
+            // Permissions UI
+            if(userObj.role === 'admin') {
+                document.getElementById('admin-panel').classList.remove('hidden');
+                document.getElementById('admin-controls-sales').classList.remove('hidden');
+                document.getElementById('user-panel').classList.add('hidden');
+                loadUsers();
+            } else {
+                document.getElementById('admin-panel').classList.add('hidden');
+                document.getElementById('admin-controls-sales').classList.add('hidden');
+                document.getElementById('user-panel').classList.remove('hidden');
+            }
+        }
+
+        window.logout = function() {
+            if(onlineRef) {
+                remove(onlineRef)
+                    .then(() => window.location.reload())
+                    .catch(() => window.location.reload());
+            } else {
+                window.location.reload();
+            }
+        };
+
+        // --- Ticker Logic ---
+        function updateTicker() {
+            const wrap = document.getElementById('news-ticker');
+            if(!globalSettings.tickerEnabled) { wrap.style.display = 'none'; return; }
+            wrap.style.display = 'block';
+
+            const content = document.getElementById('ticker-content');
+            if(globalSettings.tickerText && globalSettings.tickerText.trim() !== "") {
+                content.innerText = globalSettings.tickerText;
+            } else {
+                // Calculate Stats
+                let dMax = {u:'-', v:0}, mMax = {u:'-', v:0};
+                if(allSales.length > 0) {
+                     let uDaily={}, uMonthly={};
+                     allSales.forEach(s => {
+                         let d = new Date(s.timestamp).toLocaleDateString();
+                         let m = s.date.slice(0,7);
+                         let kD = `${d}_${s.user}`;
+                         let kM = `${m}_${s.user}`;
+                         uDaily[kD] = (uDaily[kD]||0)+s.total;
+                         uMonthly[kM] = (uMonthly[kM]||0)+s.total;
+                     });
+                     Object.entries(uDaily).forEach(([k,v])=>{ if(v>dMax.v){dMax.v=v; dMax.u=k.split('_')[1];} });
+                     Object.entries(uMonthly).forEach(([k,v])=>{ if(v>mMax.v){mMax.v=v; mMax.u=k.split('_')[1];} });
+                }
+                content.innerHTML = `🌟 أعلى مبيعات يومية: ${dMax.u} (${dMax.v} ج.م) &nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp; 🏆 أعلى شهر: ${mMax.u} (${mMax.v} ج.م)`;
+            }
+        }
+
+        window.saveTickerSettings = function() {
+            const text = document.getElementById('ticker-text-input').value;
+            const enabled = document.getElementById('ticker-toggle').checked;
+            update(ref(db, 'settings'), { tickerText: text, tickerEnabled: enabled })
+                .then(()=>alert("تم تحديث الشريط"));
+        };
+
+        // --- WhatsApp ---
+        window.openWhatsApp = function() {
+            const num = globalSettings.whatsapp || "201000000000";
+            window.open(`https://wa.me/${num}`, '_blank');
+        };
+        window.saveWhatsAppSettings = function() {
+            const n = document.getElementById('whatsapp-num-input').value;
+            if(n) update(ref(db, 'settings'), { whatsapp: n }).then(()=>alert("تم حفظ رقم الواتساب"));
+        };
+
+        // --- Employee (HR) Management ---
+        window.openEmployeeModal = function() {
+            const modal = document.getElementById('app-modal');
+            document.getElementById('modal-title').innerText = "إدارة الموظفين (الحد الأقصى 50)";
+            
+            const body = document.getElementById('modal-body');
+            body.innerHTML = `
+                <div class="input-group">
+                    <input type="text" id="emp-name" placeholder="اسم الموظف">
+                    <input type="text" id="emp-code" placeholder="كود الموظف">
+                    <input type="text" id="emp-phone" placeholder="رقم الهاتف">
+                    <button class="btn btn-add" onclick="addEmployee()">إضافة</button>
+                </div>
+                <hr>
+                <div style="overflow-x:auto;">
+                    <table id="emp-table"><thead><tr><th>الاسم</th><th>الكود</th><th>الهاتف</th><th>خيارات</th></tr></thead><tbody id="emp-body"></tbody></table>
+                </div>
+            `;
+            
+            modal.style.display = 'flex';
+            loadEmployees();
+        };
+
+        function loadEmployees() {
+            onValue(ref(db, 'employees'), snap => {
+                const list = [];
+                if(snap.val()) snap.forEach(c => list.push({key:c.key, ...c.val()}));
+                const tb = document.getElementById('emp-body');
+                if(!tb) return;
+                tb.innerHTML = '';
+                list.forEach(e => {
+                    tb.innerHTML += `
+                        <tr>
+                            <td>${e.name}</td><td>${e.code}</td><td>${e.phone}</td>
+                            <td><button class="btn btn-del" onclick="delEmployee('${e.key}')">حذف</button></td>
+                        </tr>
+                    `;
+                });
+            }, {onlyOnce:true});
+        }
+        
+        window.addEmployee = function() {
+            const n=document.getElementById('emp-name').value;
+            const c=document.getElementById('emp-code').value;
+            const p=document.getElementById('emp-phone').value;
+            if(!n) return alert("الاسم مطلوب");
+            
+            onValue(ref(db, 'employees'), snap => {
+                if(snap.size >= 50) return alert("وصلت للحد الأقصى (50)");
+                push(ref(db, 'employees'), { name:n, code:c, phone:p }).then(()=>{
+                    alert("تمت الإضافة");
+                    document.getElementById('emp-name').value='';
+                    loadEmployees();
+                });
+            }, {onlyOnce:true});
+        };
+        window.delEmployee = function(k) { if(confirm("حذف؟")) remove(ref(db, `employees/${k}`)).then(()=>loadEmployees()); };
+
+        // --- Sales & Permissions ---
+        window.toggleGlobalView = function() {
+            const v = document.getElementById('global-sales-view').checked;
+            update(ref(db, 'settings'), { globalView: v }).then(()=>alert("تم تحديث صلاحية المشاهدة"));
+        };
+
+        function renderSales(list) {
+            const tbody = document.getElementById('prev-sales-body');
+            tbody.innerHTML = '';
+            
+            list.sort((a,b)=>b.timestamp - a.timestamp);
+
+            list.forEach(s => {
+                let canView = false;
+                if(currentUser.role === 'admin') canView = true;
+                else if(s.user === currentUser.username) canView = true;
+                else if(globalSettings.globalView) canView = true;
+                
+                if(!canView) return;
+
+                const tr = document.createElement('tr');
+                let actions = `<button class="btn btn-view" onclick="viewSaleDetails('${s.key}')">👁️</button>`;
+                
+                if(currentUser.role === 'admin' || s.user === currentUser.username) {
+                    actions += `<button class="btn btn-edit" onclick="editSale('${s.key}')">✏️</button>`;
+                    actions += `<button class="btn btn-del" onclick="deleteSale('${s.key}')">🗑️</button>`;
+                }
+
+                tr.innerHTML = `
+                    <td>${new Date(s.timestamp).toLocaleDateString('ar-EG')}</td>
+                    <td>${s.user}</td>
+                    <td>${s.branch}</td>
+                    <td>${s.total}</td>
+                    <td>${actions}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            updateTicker();
+        }
+
+        function loadSales() {
+             onValue(ref(db, 'sales'), snap => {
+                const data = snap.val();
+                allSales = [];
+                if(data) Object.entries(data).forEach(([k, v]) => allSales.push({key: k, ...v}));
+                renderSales(allSales);
+                if(currentUser && currentUser.role==='admin') populateUsersFilter(allSales);
+            });
+        }
+        
+        // --- SEARCH SALES ---
+        window.searchSalesByDate = function() {
+            const d = document.getElementById('search-date').value;
+            if(!d) { renderSales(allSales); return; }
+            const filtered = allSales.filter(s => s.date.startsWith(d));
+            renderSales(filtered);
+        };
+        window.filterSales = function() {
+            const u = document.getElementById('admin-user-filter').value;
+            if(u === 'all') renderSales(allSales);
+            else {
+                const filtered = allSales.filter(s => s.user === u);
+                renderSales(filtered);
+            }
+        };
+        function populateUsersFilter(list) {
+            const sel = document.getElementById('admin-user-filter');
+            const users = [...new Set(list.map(s=>s.user))];
+            sel.innerHTML = '<option value="all">عرض مبيعات الجميع</option>';
+            users.forEach(u => sel.add(new Option(u, u)));
+        }
+
+        // --- Competitors (Enhanced) ---
+        // FIX: Missing Functions Implementation
+        window.addOption = function(id) {
+            const val = prompt("اسم الشركة الجديدة:");
+            if(val) {
+                const sel = document.getElementById(id);
+                const opt = document.createElement("option");
+                opt.text = val; opt.value = val;
+                sel.add(opt);
+                sel.value = val;
+                resetCompetitorForms();
+            }
+        };
+
+        window.resetCompetitorForms = function() {
+            ['comp-facial', 'comp-kitchen', 'comp-toilet'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            // Add default rows for better UX
+            addCompRow('comp-facial');
+            addCompRow('comp-kitchen');
+            addCompRow('comp-toilet');
+        };
+
+        window.addCompRow = function(tableId) {
+            const table = document.getElementById(tableId);
+            const row = table.insertRow();
+            row.innerHTML = `
+                <td style="width:60%"><input type="text" class="comp-item" placeholder="اسم المنتج"></td>
+                <td><input type="number" class="comp-price" placeholder="السعر"></td>
+                <td><button class="btn btn-del" onclick="this.closest('tr').remove()">X</button></td>
+            `;
+        };
+
+        function loadCompetitorData() {
+            onValue(ref(db, 'competitors'), snap => {
+                const data = snap.val();
+                allCompetitorData = [];
+                if(data) Object.entries(data).forEach(([k,v]) => allCompetitorData.push({key:k, ...v}));
+                renderSavedCompetitors(); // FIX: Added auto-refresh here
+            });
+        }
+
+        window.renderSavedCompetitors = function() {
+            const market = document.getElementById('saved-comp-filter').value;
+            const div = document.getElementById('saved-comp-display');
+            div.innerHTML = '';
+            if(!market) return;
+            
+            const records = allCompetitorData.filter(c => c.market === market).sort((a,b) => b.timestamp - a.timestamp);
+            if(records.length===0) { div.innerHTML='<p>لا توجد بيانات</p>'; return; }
+
+            records.forEach(rec => {
+                const date = new Date(rec.timestamp).toLocaleString('ar-EG');
+                let rows = rec.items.map(i => `<tr><td>${i.name}</td><td>${i.price}</td></tr>`).join('');
+                
+                let actions = '';
+                if(currentUser.role === 'admin') {
+                     actions = `
+                        <button class="btn btn-edit" onclick="editCompetitorReport('${rec.key}')">تعديل</button>
+                        <button class="btn btn-del" onclick="deleteCompetitorReport('${rec.key}')">حذف</button>
+                     `;
+                }
+
+                div.innerHTML += `
+                    <div style="background:#fff; border:1px solid #ccc; margin-bottom:15px; padding:10px; border-radius:5px;">
+                        <div style="background:#f9f9f9; padding:5px; margin-bottom:5px; display:flex; justify-content:space-between;">
+                            <span><strong>${date}</strong> | <strong style="color:var(--secondary-color)">${rec.company}</strong></span>
+                            <div>${actions}</div>
+                        </div>
+                        <table style="width:100%; border-collapse:collapse;">
+                             <thead><tr><th>الصنف</th><th>السعر</th></tr></thead>
+                             <tbody>${rows}</tbody>
+                        </table>
+                    </div>`;
+            });
+        };
+
+        window.deleteCompetitorReport = function(key) {
+            if(confirm("حذف هذا التقرير؟")) remove(ref(db, `competitors/${key}`));
+        };
+
+        window.editCompetitorReport = function(key) {
+            const rec = allCompetitorData.find(c => c.key === key);
+            if(!rec) return;
+            if(confirm("سيتم نقل البيانات للخانات للتعديل وحذف السجل الحالي..")) {
+                document.getElementById('comp-market').value = rec.market;
+                document.getElementById('comp-company').value = rec.company;
+                
+                resetCompetitorForms();
+                const tableId = 'comp-facial'; 
+                const tbody = document.getElementById(tableId);
+                tbody.innerHTML = ''; 
+                
+                rec.items.forEach(i => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td style="width:60%"><input type="text" class="comp-item" value="${i.name}"></td><td><input type="number" class="comp-price" value="${i.price}"></td><td><button class="btn btn-del" onclick="this.closest('tr').remove()">X</button></td>`;
+                    tbody.appendChild(tr);
+                });
+                
+                remove(ref(db, `competitors/${key}`));
+                showSection('competitors');
+            }
+        };
+
+        // --- Inventory Logic (FIXED) ---
+        window.renderInventoryTable = function() {
+            const tbody = document.getElementById('inventory-body');
+            tbody.innerHTML = '';
+            // Standard Products
+            softRoseProducts.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${p}</td><td><input type="number" placeholder="الكمية"></td>`;
+                tbody.appendChild(tr);
+            });
+            // Custom Items
+            customInventoryItems.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${p}</td><td><input type="number" placeholder="الكمية"></td>`;
+                tbody.appendChild(tr);
+            });
+        };
+
+        window.addInventoryItemPrompt = function() {
+            const n = prompt("اسم الصنف الجديد:");
+            if(n) {
+                customInventoryItems.push(n);
+                renderInventoryTable();
+            }
+        };
+
+        function loadInventoryData() {
+            onValue(ref(db, 'inventory_history'), snap => {
+                const d = snap.val();
+                allInventoryHistory = [];
+                if(d) Object.entries(d).forEach(([k,v]) => allInventoryHistory.push({key:k, ...v}));
+            });
+        }
+
+        window.printInventory = function(recKey) {
+            const rec = allInventoryHistory.find(r => r.key === recKey);
+            if(!rec) return;
+            
+            const content = `
+                <div style="direction:rtl; font-family:'Segoe UI'; padding:20px; text-align:center;">
+                    <h2>تقرير مخزون - ${rec.branch}</h2>
+                    <p>المستخدم: ${rec.user} <br> التاريخ: ${new Date(rec.timestamp).toLocaleString('ar-EG')}</p>
+                    <table border="1" style="width:100%; border-collapse:collapse; margin-top:20px;">
+                        <thead style="background:#eee;"><tr><th style="padding:10px;">الصنف</th><th style="padding:10px;">الكمية</th></tr></thead>
+                        <tbody>
+                            ${rec.items.map(i => `<tr><td style="padding:10px;">${i.name}</td><td style="padding:10px;">${i.qty}</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            const win = window.open('','','width=800,height=600');
+            win.document.write(content);
+            win.document.close();
+            win.print();
+        };
+
+        window.renderInventoryHistory = function() {
+            const market = document.getElementById('inv-history-filter').value;
+            const container = document.getElementById('inv-history-display');
+            container.innerHTML = '';
+            if(!market) return;
+            const relevant = allInventoryHistory.filter(i => i.branch === market).sort((a,b) => b.timestamp - a.timestamp);
+            if(relevant.length === 0) { container.innerHTML = '<p>لا توجد بيانات</p>'; return; }
+            
+            relevant.forEach(rec => {
+                const date = new Date(rec.timestamp).toLocaleString('ar-EG');
+                let actions = `<button class="btn btn-print" onclick="printInventory('${rec.key}')" style="font-size:0.7rem; padding:2px 5px;">🖨️</button>`;
+                
+                if(currentUser.role === 'admin' || rec.user === currentUser.username) {
+                    actions += `
+                        <button class="btn btn-edit" onclick="editInventory('${rec.key}')" style="font-size:0.7rem; padding:2px 5px;">✏️</button>
+                        <button class="btn btn-del" onclick="deleteInventory('${rec.key}')" style="font-size:0.7rem; padding:2px 5px;">🗑️</button>
+                    `;
+                }
+
+                const div = document.createElement('div');
+                div.style = "background:#fff; border:1px solid #ddd; margin-bottom:10px; padding:10px; border-radius:5px;";
+                let rows = rec.items.map(i => `<tr><td>${i.name}</td><td>${i.qty}</td></tr>`).join('');
+                
+                div.innerHTML = `
+                    <div style="font-weight:bold; color:var(--primary-color); border-bottom:1px solid #eee; padding-bottom:5px; display:flex; justify-content:space-between;">
+                        <span>${date} | ${rec.user}</span>
+                        <div>${actions}</div>
+                    </div>
+                    <table style="margin-top:5px; font-size:0.9rem;">
+                        <thead><tr><th>الصنف</th><th>الكمية</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                `;
+                container.appendChild(div);
+            });
+        };
+
+        // --- User Management ---
+        function loadUsers() {
+            onValue(ref(db, 'users'), snap => {
+                const tb = document.getElementById('users-body'); 
+                if(!tb) return;
+                tb.innerHTML='';
+                snap.forEach(c => {
+                    const k = c.key; const v = c.val();
+                    const likes = v.likes || 0;
+                    const dislikes = v.dislikes || 0;
+                    const nick = v.nickname || v.username;
+                    
+                    tb.innerHTML += `
+                        <tr>
+                            <td>${v.username}</td>
+                            <td>${nick}</td>
+                            <td>${v.role}</td>
+                            <td style="white-space:nowrap;">
+                                <span onclick="rateUser('${k}','like')" class="btn-rate">👍 ${likes}</span>
+                                <span onclick="rateUser('${k}','dislike')" class="btn-rate">👎 ${dislikes}</span>
+                            </td>
+                            <td>
+                                <button class="btn btn-del" onclick="delUser('${k}')">X</button>
+                            </td>
+                        </tr>`;
+                });
+            });
+        }
+        
+        window.addNewUser = function() {
+            const u = document.getElementById('new-u').value;
+            const p = document.getElementById('new-p').value;
+            const nick = document.getElementById('new-nick').value || u;
+            const role = document.getElementById('new-role').value;
+            
+            if(u&&p) {
+                push(ref(db, 'users'), { username:u, password:p, nickname:nick, role:role, likes:0, dislikes:0 })
+                .then(()=> { alert('تم إضافة الحساب'); document.getElementById('new-u').value=''; });
+            }
+        };
+
+        window.rateUser = function(key, type) {
+            const userRef = ref(db, `users/${key}`);
+            onValue(userRef, snap => {
+                const v = snap.val();
+                let current = v[type+'s'] || 0; 
+                update(userRef, { [type+'s']: current + 1 });
+            }, {onlyOnce:true});
+        };
+
+        // --- Common ---
+        window.loadMarkets = function() { onValue(ref(db,'markets'), s=>{ marketList=[]; if(s.val()) Object.values(s.val()).forEach(m=>marketList.push(m.name)); updateDropdowns(); }); };
+        function updateDropdowns() { 
+            const fill = (id) => { const el=document.getElementById(id); const v=el.value; el.innerHTML='<option value="">-- اختر --</option>'; marketList.sort().forEach(m=>el.add(new Option(m,m))); el.value=v; };
+            fill('sales-branch-select'); fill('inv-branch-select'); fill('inv-history-filter'); fill('comp-market'); fill('saved-comp-filter');
+        }
+        
+        window.addNewMarketPrompt = function() { const n = prompt("الاسم:"); if(n && !marketList.includes(n)) push(ref(db, 'markets'), {name:n}); };
+        
+        window.addDailyRow = function() { const tr = document.createElement('tr'); tr.innerHTML=`<td><input type="text" class="ds-item" list="prod-list"></td><td><input type="number" class="ds-qty"></td><td><input type="number" class="ds-price" onchange="calcTotal()"></td><td><button class="btn btn-del" onclick="this.closest('tr').remove();calcTotal()">X</button></td>`; document.getElementById('daily-sales-body').appendChild(tr); };
+        const dl = document.createElement('datalist'); dl.id="prod-list"; softRoseProducts.forEach(p=>{const o=document.createElement('option');o.value=p;dl.appendChild(o)}); document.body.appendChild(dl);
+        
+        window.calcTotal = function() { let s=0; document.querySelectorAll('.ds-price').forEach(i=>s+=parseFloat(i.value)||0); document.getElementById('daily-total').innerText=s.toFixed(2); };
+        
+        window.saveDailySales = function() { 
+            const b = document.getElementById('sales-branch-select').value; 
+            if(!b) return alert("الفرع؟");
+            const items=[]; let t=0;
+            document.querySelectorAll('#daily-sales-body tr').forEach(tr=>{
+                const i=tr.querySelector('.ds-item').value, q=tr.querySelector('.ds-qty').value, p=parseFloat(tr.querySelector('.ds-price').value)||0;
+                if(i&&p) { items.push({item:i,qty:q,price:p}); t+=p; }
+            });
+            if(items.length) push(ref(db,'sales'), {date:new Date().toISOString(), timestamp:Date.now(), user:currentUser.username, branch:b, items, total:t}).then(()=>{alert("تم"); document.getElementById('daily-sales-body').innerHTML=''; calcTotal();});
+        };
+        
+        // Inventory Save
+        window.saveInventory = function() {
+            const b = document.getElementById('inv-branch-select').value; if(!b) return alert("الفرع؟");
+            const items=[]; document.querySelectorAll('#inventory-body tr').forEach(tr=>{ const n=tr.cells[0].innerText, q=tr.querySelector('input').value; if(q) items.push({name:n, qty:q}); });
+            push(ref(db,'inventory_history'), {timestamp:Date.now(), user:currentUser.username, branch:b, items}).then(()=>alert("تم"));
+        };
+        
+        // Competitors Save
+        window.saveCompetitorPrices = function() {
+            const m=document.getElementById('comp-market').value, c=document.getElementById('comp-company').value;
+            if(!m) return alert("الماركت؟");
+            const items=[]; document.querySelectorAll('.comp-sub-table tr').forEach(tr=>{ const n=tr.querySelector('.comp-item').value, p=tr.querySelector('.comp-price').value; if(n&&p) items.push({name:n, price:p}); });
+            if(items.length) push(ref(db,'competitors'), {timestamp:Date.now(), market:m, company:c, items}).then(()=>{alert("تم"); resetCompetitorForms();});
+        };
+
+        window.closeModal = function() { document.getElementById('app-modal').style.display='none'; };
+        
+        window.viewSaleDetails = function(k) { 
+            const s = allSales.find(i=>i.key===k); if(!s)return;
+            const b = document.getElementById('modal-body');
+            b.innerHTML = `<p>المستخدم: ${s.user} | الفرع: ${s.branch}</p><table style="width:100%"><tr><th>صنف</th><th>كمية</th><th>سعر</th></tr>${s.items.map(i=>`<tr><td>${i.item}</td><td>${i.qty}</td><td>${i.price}</td></tr>`).join('')}</table><h3>الإجمالي: ${s.total}</h3>`;
+            document.getElementById('modal-title').innerText="تفاصيل الفاتورة";
+            document.getElementById('app-modal').style.display='flex';
+        };
+        
+        window.deleteSale = function(k) { if(confirm("حذف؟")) remove(ref(db, `sales/${k}`)); };
+        window.deleteInventory = function(k) { if(confirm("حذف؟")) remove(ref(db, `inventory_history/${k}`)); };
+        window.delUser = function(k) { if(confirm("حذف الحساب؟")) remove(ref(db, `users/${k}`)); };
+        
+        window.editSale = function(k) {
+            const s = allSales.find(i=>i.key===k); if(!s)return;
+            if(confirm("تعديل؟")) {
+                document.getElementById('sales-branch-select').value=s.branch;
+                const b=document.getElementById('daily-sales-body'); b.innerHTML='';
+                s.items.forEach(i=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td><input class="ds-item" value="${i.item}"></td><td><input class="ds-qty" value="${i.qty}"></td><td><input class="ds-price" value="${i.price}" onchange="calcTotal()"></td><td><button class="btn btn-del" onclick="this.closest('tr').remove()">X</button></td>`; b.appendChild(tr); });
+                calcTotal(); remove(ref(db,`sales/${k}`)); showSection('daily-sales');
+            }
+        };
+        
+        window.editInventory = function(k) {
+            const r=allInventoryHistory.find(i=>i.key===k); if(!r)return;
+            if(confirm("تعديل؟")) {
+                 document.getElementById('inv-branch-select').value=r.branch;
+                 renderInventoryTable(); 
+                 setTimeout(()=>{
+                     const rows=document.querySelectorAll('#inventory-body tr');
+                     r.items.forEach(i=>{ 
+                         for(let row of rows) if(row.cells[0].innerText===i.name) row.querySelector('input').value=i.qty; 
+                     });
+                 },100);
+                 remove(ref(db,`inventory_history/${k}`)); showSection('inventory');
+            }
+        };
+
+        window.setTheme=function(t){document.body.className='';if(t==='glass')document.body.classList.add('glass-mode');if(t==='dark')document.body.classList.add('dark-mode');};
+        window.showSection=function(id){document.querySelectorAll('.section').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active'));document.getElementById(id).classList.add('active');if(event && event.target)event.target.classList.add('active');};
+        function updateClock(){document.getElementById('current-date-time').innerText=new Date().toLocaleString('ar-EG',{weekday:'short',hour:'2-digit',minute:'2-digit'});}
+        
+        window.printCompetitorReport = function() {
+            const m = document.getElementById('saved-comp-filter').value; if(!m) return alert("ماركت؟");
+            const recs = allCompetitorData.filter(c=>c.market===m);
+            const grp={}; recs.forEach(r=>{ if(!grp[r.company]||r.timestamp>grp[r.company].timestamp) grp[r.company]=r; });
+            let h=`<div style="direction:rtl;text-align:center;font-family:sans-serif"><h2>تقرير المنافسين: ${m}</h2><hr>`;
+            Object.values(grp).forEach(r=>{
+                h+=`<h3>${r.company} (${new Date(r.timestamp).toLocaleDateString()})</h3><table border="1" width="100%" style="border-collapse:collapse"><tr><th>صنف</th><th>سعر</th></tr>${r.items.map(i=>`<tr><td>${i.name}</td><td>${i.price}</td></tr>`).join('')}</table>`;
+            });
+            const w=window.open('','','width=800'); w.document.write(h); w.print();
+        };
+
+        window.exportSimpleTable = function(id,n) { const wb=XLSX.utils.table_to_book(document.getElementById(id)); XLSX.writeFile(wb,n+'.xlsx'); };
+    </script>
+</body>
+</html>
